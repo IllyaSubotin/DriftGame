@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
-public class UIStateMachine 
+public class UIStateMachine
 {
     private UIState _currentState;
     private UIState _previousState;
