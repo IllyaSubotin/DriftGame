@@ -17,5 +17,7 @@ public class ShopScreen : UIScreen
     public TMP_Text gemsBuyTexts;
     public TMP_Text carNotAvailableText;
     public Button menuButton;
+    public TMP_Text cashText;
+    public TMP_Text gemsText;
     public CarsPriceConfig carsPriceConfig;
 }

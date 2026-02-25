@@ -27,6 +27,10 @@ public class ShopState : UIState
     public override void Enter()
     {
         _screen.Show();
+        
+        _screen.cashText.text = _moneyManager.Get(MoneyType.Cash).ToString();
+        _screen.gemsText.text = _moneyManager.Get(MoneyType.Gems).ToString();
+
         foreach(var car in _carData.carSaveDatas)
         {
             if (car.isOwned)
@@ -67,8 +71,11 @@ public class ShopState : UIState
             if (_moneyManager.Get(MoneyType.Cash) >= _screen.carsPriceConfig.CashPrice[_currentCarId])
             {
                 _moneyManager.Spend(_screen.carsPriceConfig.CashPrice[_currentCarId], MoneyType.Cash);
+                _screen.cashText.text = _moneyManager.Get(MoneyType.Cash).ToString();
+                
                 _carData.carSaveDatas[_currentCarId].isOwned = true;
                 _saveLoadManager.SaveGameData();
+
             }
         });
 
@@ -77,6 +84,8 @@ public class ShopState : UIState
             if (_moneyManager.Get(MoneyType.Gems) >= _screen.carsPriceConfig.GemPrice[_currentCarId])
             {
                 _moneyManager.Spend(_screen.carsPriceConfig.GemPrice[_currentCarId], MoneyType.Gems);
+                _screen.gemsText.text = _moneyManager.Get(MoneyType.Gems).ToString();
+
                 _carData.carSaveDatas[_currentCarId].isOwned = true;
                 _saveLoadManager.SaveGameData();
             }

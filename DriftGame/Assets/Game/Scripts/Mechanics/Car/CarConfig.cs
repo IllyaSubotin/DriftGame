@@ -6,10 +6,11 @@ using UnityEngine;
 public class CarConfig : ScriptableObject
 {
     public int maxSpeed;
+    public int downforce;
     public int maxReverseSpeed;
     public int motorPower;
     public int brakePower;
     public int maxSteerAngle;
-    public int decelerationMultiplier;
+    public float decelerationMultiplier;
     public int driftMultiplier;
 }

@@ -43,7 +43,7 @@ public class CarController : MonoBehaviour, ICarController
 
     private float driftStartThreshold = 2.5f; 
     private float driftForce = 0.05f;
-    private float baseStiffness = 1f;
+    private float baseStiffness = 2f;
     
     private float flipCheckDelay = 2f;
     private float flipTimer = 0f;
@@ -70,6 +70,11 @@ public class CarController : MonoBehaviour, ICarController
         rRMesh = MeshWheels.rRMesh;
 
         carWheelSync.Init(MeshWheels);
+
+        SetWheelFriction(rLCollider);
+        SetWheelFriction(rRCollider);
+        SetWheelFriction(fLCollider);
+        SetWheelFriction(fRCollider);
     }
 
 
@@ -90,17 +95,22 @@ public class CarController : MonoBehaviour, ICarController
         float localX = localVelocity.x;
         float localZ = localVelocity.z;
 
+        // rb.AddForce(-transform.up * carConfig.downforce * rb.velocity.magnitude, ForceMode.Force);
+
         driftAmount = Mathf.Abs(localX);
         speed = rb.velocity.magnitude;
 
         isDrifting = Mathf.Abs(localX) > driftStartThreshold && speed > 8f;
 
         //driftSync.SetDriftState(isDrifting, driftAmount);
+        Debug.Log("speed = " + speed);
 
-        ApplySteering(isDrifting);
+        ApplySteering();
         ApplyMotor(localZ);
         ApplyBrakes();
         ApplyDrift(localX, speed, isDrifting);
+
+        ApplyAntiRoll();
     }
     
     private void GetInput()
@@ -111,20 +121,9 @@ public class CarController : MonoBehaviour, ICarController
         handbrakeInput = Input.GetKey(KeyCode.LeftShift) ? 1f : 0f;
     }
 
-    private void ApplySteering(bool isDrifting)
-    {
-        if (isDrifting)
-        {
-            currentMaxSteerAngle -= steerReduceSpeed * Time.deltaTime;
-            currentMaxSteerAngle = Mathf.Clamp(currentMaxSteerAngle, 0f, carConfig.maxSteerAngle);
-        }
-        else
-        {
-            currentMaxSteerAngle += steerRecoverSpeed * Time.deltaTime;
-            currentMaxSteerAngle = Mathf.Clamp(currentMaxSteerAngle, 0f, carConfig.maxSteerAngle);
-        }
-
-        float steer = steerInput * currentMaxSteerAngle;
+    private void ApplySteering()
+    {     
+        float steer = steerInput * carConfig.maxSteerAngle;
 
         if (steerInput == 0)
             steer = 0;
@@ -135,19 +134,29 @@ public class CarController : MonoBehaviour, ICarController
 
     private void ApplyMotor(float localZ)
     {
-        float torque = throttleInput * carConfig.motorPower;
+        float speedPercent = Mathf.Clamp01(Mathf.Abs(localZ) / carConfig.maxSpeed);
 
-        if (localZ > carConfig.maxSpeed && throttleInput > 0)
+        // torque падає з ростом швидкості
+        float torqueMultiplier = 1f - speedPercent;
+
+        float torque = throttleInput * carConfig.motorPower * torqueMultiplier;
+
+        if (throttleInput > 0 && localZ > carConfig.maxSpeed)
             torque = 0;
 
-        if (localZ < -carConfig.maxReverseSpeed && throttleInput < 0)
+        if (throttleInput < 0 && localZ < -carConfig.maxReverseSpeed)
             torque = 0;
 
         rLCollider.motorTorque = torque;
         rRCollider.motorTorque = torque;
 
-        if (throttleInput == 0)
-            rb.velocity = Vector3.Lerp(rb.velocity, rb.velocity * 0.98f, Time.fixedDeltaTime * carConfig.decelerationMultiplier);
+        Debug.Log($"Torque: {torque} Speed: {speed}");
+
+        // FIXED deceleration
+        if (Mathf.Abs(throttleInput) < 0.1f)
+        {
+            //rb.velocity *= 1f - (Time.fixedDeltaTime * carConfig.decelerationMultiplier);
+        }
     }
     
     private void ApplyBrakes()
@@ -208,6 +217,65 @@ public class CarController : MonoBehaviour, ICarController
         e1.enabled = heavySlide;
         e2.enabled = heavySlide;
     }
+
+    private void ApplyAntiRoll()
+    {
+        ApplyAntiRollToAxle(fLCollider, fRCollider, 5000);
+        ApplyAntiRollToAxle(rLCollider, rRCollider, 5000);
+    }
+
+    private void ApplyAntiRollToAxle(WheelCollider leftWheel, WheelCollider rightWheel, float antiRollForce)
+    {
+        float travelLeft = GetSuspensionTravel(leftWheel, out bool groundedLeft);
+        float travelRight = GetSuspensionTravel(rightWheel, out bool groundedRight);
+
+        float antiRoll = (travelLeft - travelRight) * antiRollForce;
+
+        if (groundedLeft)
+        {
+            rb.AddForceAtPosition(
+                leftWheel.transform.up * -antiRoll,
+                leftWheel.transform.position,
+                ForceMode.Force);
+        }
+
+        if (groundedRight)
+        {
+            rb.AddForceAtPosition(
+                rightWheel.transform.up * antiRoll,
+                rightWheel.transform.position,
+                ForceMode.Force);
+        }
+    }
+
+    private float GetSuspensionTravel(WheelCollider wheel, out bool grounded)
+    {
+        if (wheel.GetGroundHit(out WheelHit hit))
+        {
+            grounded = true;
+
+            return (-wheel.transform.InverseTransformPoint(hit.point).y - wheel.radius)
+                / wheel.suspensionDistance;
+        }
+
+        grounded = false;
+        return 1f;
+    }
+
+
+
+
+    private void SetWheelFriction(WheelCollider wheel)
+    {
+        WheelFrictionCurve forward = wheel.forwardFriction;
+        forward.stiffness = 3f;
+        wheel.forwardFriction = forward;
+
+        WheelFrictionCurve sideways = wheel.sidewaysFriction;
+        sideways.stiffness = 2f;
+        wheel.sidewaysFriction = sideways;
+    }
+
 
     private void UpdateWheelMeshes()
     {

@@ -30,6 +30,9 @@ public class MainMenuState : UIState
     {
         _screen.Show();
         SetupButtons();
+
+        _moneyManager.Add(100, MoneyType.Gems);
+
         _screen.cashText.text = _moneyManager.Get(MoneyType.Cash).ToString();
         _screen.gemsText.text = _moneyManager.Get(MoneyType.Gems).ToString();
         _multiplayerManager.Disconnect();
@@ -41,6 +44,11 @@ public class MainMenuState : UIState
 
     public override void Exit()
     {
+        _screen.singlePlayButton.onClick.RemoveAllListeners();
+        _screen.multiPlayButton.onClick.RemoveAllListeners();
+        _screen.garageButton.onClick.RemoveAllListeners();
+        _screen.carShopButton.onClick.RemoveAllListeners();
+        _screen.exitButton.onClick.RemoveAllListeners();
         //_screen.Hide();
     }
     
